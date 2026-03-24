@@ -66,8 +66,14 @@ git push -u origin main
    - Add:
      ```
      Name: DATABASE_URL
-     Value: postgresql://postgres:YOUR_PASSWORD@PROJECT_REF.supabase.co:5432/postgres?schema=public&sslmode=require
+     Value: postgresql://postgres.PROJECT_REF:YOUR_PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require
      ```
+   - Also add (for migrate/db pull usage):
+     ```
+     Name: DIRECT_URL
+     Value: postgresql://postgres:YOUR_PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require
+     ```
+   - URL-encode password special chars (`#` => `%23`, `@` => `%40`, `!` => `%21`)
    - Production: ✅ checked
    - Preview: ✅ checked
    - Development: ✅ checked
@@ -104,7 +110,10 @@ vercel
 
 # Add environment variable
 vercel env add DATABASE_URL
-# Paste: postgresql://postgres:YOUR_PASSWORD@PROJECT_REF.supabase.co:5432/postgres?schema=public&sslmode=require
+# Paste pooled URI: postgresql://postgres.PROJECT_REF:YOUR_PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require
+
+vercel env add DIRECT_URL
+# Paste direct URI: postgresql://postgres:YOUR_PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require
 
 # Deploy to production
 vercel --prod
@@ -231,9 +240,22 @@ exit
 **Error:** `could not determine server certificate` or `SSL required`
 
 **Fix:**
-- Verify `&sslmode=require` at END of DATABASE_URL
+- Verify `&sslmode=require` is present in both `DATABASE_URL` and `DIRECT_URL`
 - Verify password is URL-encoded if it contains special chars
 - Test locally first: `npm run dev`
+
+---
+
+### ❌ `P1001 Can't reach database server`
+
+**Fix:**
+1. Confirm runtime uses pooled `DATABASE_URL` host on port `6543`
+2. Confirm `DIRECT_URL` uses `db.PROJECT_REF.supabase.co:5432`
+3. Run local check:
+  ```bash
+  npm run db:check
+  ```
+4. Redeploy after updating env vars in Vercel
 
 ---
 

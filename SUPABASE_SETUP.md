@@ -38,20 +38,27 @@ This guide walks you through setting up SafeNet with Supabase PostgreSQL in unde
 1. In Supabase dashboard, click your project
 2. Go to **Settings** (gear icon, bottom left)
 3. Click **Database**
-4. Under "Connection string", select **URI**
-5. Copy the connection string (starts with `postgresql://`)
+4. Under "Connection string", copy both:
+   - **Transaction Pooler URI** (for app runtime/Vercel)
+   - **Direct URI** (for Prisma migrate/db pull)
 
 ### 2.2 Format Connection String
-The string will look like:
+Transaction Pooler URI looks like:
 ```
-postgresql://postgres:[PASSWORD]@[PROJECT_REF].supabase.co:5432/postgres?schema=public&sslmode=require
+postgresql://postgres.[PROJECT_REF]:[PASSWORD]@[POOLER_HOST]:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require
 ```
 
 **Replace `[PASSWORD]`** with the password you set during project creation.
 
-**Final format:**
+**If password has special chars**, URL-encode them:
+- `#` as `%23`
+- `@` as `%40`
+- `!` as `%21`
+
+**Use these env vars:**
 ```
-postgresql://postgres:YOUR_PASSWORD@your-project-ref.supabase.co:5432/postgres?schema=public&sslmode=require
+DATABASE_URL="postgresql://postgres.PROJECT_REF:YOUR_PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+DIRECT_URL="postgresql://postgres:YOUR_PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require"
 ```
 
 ---
@@ -67,12 +74,14 @@ cp .env.local.example .env.local
 ### 3.2 Edit .env.local
 Open `.env.local` and replace:
 ```env
-DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@PROJECT_REF.supabase.co:5432/postgres?schema=public&sslmode=require"
+DATABASE_URL="postgresql://postgres.PROJECT_REF:YOUR_PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+DIRECT_URL="postgresql://postgres:YOUR_PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require"
 ```
 
 Example:
 ```env
-DATABASE_URL="postgresql://postgres:MyP@ssw0rd!@abcdefgh123456.supabase.co:5432/postgres?schema=public&sslmode=require"
+DATABASE_URL="postgresql://postgres.abcdefgh123456:MyP%40ssw0rd%21@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+DIRECT_URL="postgresql://postgres:MyP%40ssw0rd%21@db.abcdefgh123456.supabase.co:5432/postgres?sslmode=require"
 ```
 
 Save the file.
@@ -177,15 +186,16 @@ Open http://localhost:3000 and test:
 **Error:** `error: getaddrinfo ENOTFOUND PROJECT_REF.supabase.co`
 
 **Fix:**
-- Verify PROJECT_REF in connection string is correct
-- Check password doesn't have special characters (or escape them)
-- Ensure no extra spaces in `DATABASE_URL`
+- Verify `DATABASE_URL` uses pooler host and port `6543`
+- Verify `DIRECT_URL` uses `db.PROJECT_REF.supabase.co:5432`
+- Ensure password is URL-encoded
+- Ensure no extra spaces in URLs
 
 **Test connection:**
 ```bash
-psql "postgresql://postgres:PASSWORD@PROJECT_REF.supabase.co:5432/postgres?schema=public&sslmode=require"
-# Type password when prompted
-# \q to exit
+npm run db:check
+# For schema introspection/migrations:
+npx prisma db pull
 ```
 
 ### ❌ `sslmode` errors
@@ -209,8 +219,9 @@ npm run seed
 **Error:** `FATAL: role "postgres" does not exist`
 
 **Fix:**
-- You're connecting to local PostgreSQL, not Supabase
-- Verify DATABASE_URL has `.supabase.co` domain
+- You may be pointing to local Postgres by mistake
+- Verify `DIRECT_URL` is `db.PROJECT_REF.supabase.co:5432`
+- Verify runtime `DATABASE_URL` is pooler on `:6543`
 
 ---
 

@@ -17,9 +17,11 @@ A Next.js + PostgreSQL prototype demonstrating a distributed moderator network p
    - Region: Closest to you (recommended: India if available)
    - Password: Save this securely
 3. Once created, go to **Project Settings** → **Database** → **Connection string**
-4. Copy the **URI** connection string (starts with `postgresql://`)
+4. Copy the **Transaction Pooler URI** connection string (starts with `postgresql://`)
 5. In the connection string, replace `[PASSWORD]` with the password you set
-6. Format should be: `postgresql://postgres:YOUR_PASSWORD@PROJECT_ID.supabase.co:5432/postgres`
+6. URL-encode special chars in password (`#` -> `%23`, `@` -> `%40`, `!` -> `%21`)
+7. Use pooler format for deploy/runtime, for example:
+   `postgresql://postgres.PROJECT_REF:YOUR_PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require`
 
 **Optional: Get Supabase Keys**
 - Go to **Settings** → **API** 
@@ -36,7 +38,8 @@ npm install
 cp .env.local.example .env.local
 
 # Edit .env.local with your Supabase connection string
-# DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@PROJECT_ID.supabase.co:5432/postgres?schema=public"
+# DATABASE_URL="postgresql://postgres.PROJECT_REF:YOUR_PASSWORD@POOLER_HOST:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+# DIRECT_URL="postgresql://postgres:YOUR_PASSWORD@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require"
 ```
 
 ### 4. Initialize Database
@@ -260,9 +263,11 @@ npm run prisma:generate
 ```
 
 ### `Cannot connect to PostgreSQL`
-→ Ensure PostgreSQL is running and credentials are correct
+→ Most often this means the URL/host is wrong or unreachable
+→ For Vercel runtime, use the Supabase pooler URI (port `6543`), not the direct DB host
+→ Keep local `prisma db pull`/migrations on `DIRECT_URL` if needed
 ```bash
-pg_isready -h localhost -p 5432 -d safenet_db
+npm run db:check
 ```
 
 ### Port 3000 already in use
