@@ -26,6 +26,7 @@ import { Moderator } from '@/lib/types';
 export default function TeamManagementPage() {
   const [moderators, setModerators] = useState<Moderator[]>([]);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -35,13 +36,26 @@ export default function TeamManagementPage() {
   const fetchModerators = async () => {
     try {
       const response = await fetch('/api/moderators');
+      if (!response.ok) {
+        throw new Error(`API failed with status ${response.status}`);
+      }
       const data = await response.json();
       if (data.success) {
         setModerators(data.data);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(data.error || 'Moderators API returned an error');
+        toast({
+          title: 'Error loading moderators',
+          description: data.error || 'Check database connection and API logs',
+          status: 'error',
+        });
       }
     } catch (error) {
+      setErrorMessage('Could not fetch moderators data');
       toast({
         title: 'Error loading moderators',
+        description: 'Could not connect to the moderators API',
         status: 'error',
       });
     } finally {
@@ -77,6 +91,9 @@ export default function TeamManagementPage() {
 
   const verifiedMods = moderators.filter(m => m.trainingStatus === 'verified');
   const trainingMods = moderators.filter(m => m.trainingStatus === 'in_training');
+  const avgAccuracy = moderators.length > 0
+    ? (moderators.reduce((acc, m) => acc + m.accuracyScore, 0) / moderators.length).toFixed(0)
+    : '0';
 
   return (
     <Box minH="100vh" bg="gray.50">
@@ -92,6 +109,9 @@ export default function TeamManagementPage() {
                 {moderators.length} total moderators ({verifiedMods.length} verified,{' '}
                 {trainingMods.length} in training)
               </Text>
+              {errorMessage && (
+                <Text color="red.500" fontSize="xs">{errorMessage}</Text>
+              )}
             </VStack>
             <Link href="/admin/dashboard">
               <Button variant="ghost">← Back to Dashboard</Button>
@@ -139,11 +159,7 @@ export default function TeamManagementPage() {
                     Avg Accuracy
                   </Text>
                   <Text fontSize="2xl" fontWeight="bold">
-                    {(
-                      moderators.reduce((acc, m) => acc + m.accuracyScore, 0) /
-                      moderators.length
-                    ).toFixed(0)}
-                    %
+                    {avgAccuracy}%
                   </Text>
                   <Text fontSize="xs" color="purple.600">
                     Team performance

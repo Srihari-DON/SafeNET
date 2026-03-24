@@ -34,6 +34,7 @@ interface AnalyticsData {
 export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -43,13 +44,26 @@ export default function AdminDashboard() {
   const fetchAnalytics = async () => {
     try {
       const response = await fetch('/api/analytics?platformId=platform_koo');
+      if (!response.ok) {
+        throw new Error(`API failed with status ${response.status}`);
+      }
       const data = await response.json();
       if (data.success) {
         setAnalytics(data.data);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(data.error || 'Analytics API returned an error');
+        toast({
+          title: 'Error loading analytics',
+          description: data.error || 'Check database connection and API logs',
+          status: 'error',
+        });
       }
     } catch (error) {
+      setErrorMessage('Could not fetch analytics data');
       toast({
         title: 'Error loading analytics',
+        description: 'Could not connect to the analytics API',
         status: 'error',
       });
     } finally {
@@ -57,7 +71,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading || !analytics) {
+  if (loading) {
     return (
       <Box minH="100vh" bg="gray.50">
         <Navbar userRole="admin" />
@@ -70,6 +84,42 @@ export default function AdminDashboard() {
       </Box>
     );
   }
+
+  if (!analytics) {
+    return (
+      <Box minH="100vh" bg="gray.50">
+        <Navbar userRole="admin" userName="Koo Trust & Safety" />
+        <Container maxW="4xl" py={8}>
+          <Card borderLeft="4px solid #e53e3e" boxShadow="sm">
+            <CardBody p={6}>
+              <VStack align="start" spacing={3}>
+                <Heading size="md">Unable to Load Dashboard</Heading>
+                <Text color="gray.700">
+                  {errorMessage || 'Analytics data could not be loaded.'}
+                </Text>
+                <Button colorScheme="purple" onClick={() => {
+                  setLoading(true);
+                  fetchAnalytics();
+                }}>
+                  Retry
+                </Button>
+              </VStack>
+            </CardBody>
+          </Card>
+        </Container>
+      </Box>
+    );
+  }
+
+  const approvedPct = analytics.totalReviews > 0
+    ? Math.round((analytics.approvedCount / analytics.totalReviews) * 100)
+    : 0;
+  const flaggedPct = analytics.totalReviews > 0
+    ? Math.round((analytics.flaggedCount / analytics.totalReviews) * 100)
+    : 0;
+  const escalatedPct = analytics.totalReviews > 0
+    ? Math.round((analytics.escalatedCount / analytics.totalReviews) * 100)
+    : 0;
 
   const kpis = [
     {
@@ -137,7 +187,7 @@ export default function AdminDashboard() {
                     {analytics.approvedCount.toLocaleString()}
                   </Text>
                   <Text fontSize="xs" color="gray.600">
-                    {Math.round((analytics.approvedCount / analytics.totalReviews) * 100)}% of total
+                    {approvedPct}% of total
                   </Text>
                 </VStack>
               </CardBody>
@@ -151,7 +201,7 @@ export default function AdminDashboard() {
                     {analytics.flaggedCount.toLocaleString()}
                   </Text>
                   <Text fontSize="xs" color="gray.600">
-                    {Math.round((analytics.flaggedCount / analytics.totalReviews) * 100)}% of total
+                    {flaggedPct}% of total
                   </Text>
                 </VStack>
               </CardBody>
@@ -165,7 +215,7 @@ export default function AdminDashboard() {
                     {analytics.escalatedCount.toLocaleString()}
                   </Text>
                   <Text fontSize="xs" color="gray.600">
-                    {Math.round((analytics.escalatedCount / analytics.totalReviews) * 100)}% of total
+                    {escalatedPct}% of total
                   </Text>
                 </VStack>
               </CardBody>
