@@ -250,9 +250,11 @@ export default function TeamManagementPage() {
                     response times
                   </Text>
                 </VStack>
-                <Button colorScheme="purple">
-                  Add Moderators →
-                </Button>
+                <Link href="/moderation/onboarding">
+                  <Button colorScheme="purple">
+                    Add Moderators →
+                  </Button>
+                </Link>
               </HStack>
             </CardBody>
           </Card>

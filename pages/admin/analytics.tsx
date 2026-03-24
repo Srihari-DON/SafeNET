@@ -44,6 +44,7 @@ interface AnalyticsData {
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const toast = useToast();
 
   useEffect(() => {
@@ -53,13 +54,26 @@ export default function AnalyticsPage() {
   const fetchAnalytics = async () => {
     try {
       const response = await fetch('/api/analytics?platformId=platform_koo');
+      if (!response.ok) {
+        throw new Error(`API failed with status ${response.status}`);
+      }
       const data = await response.json();
       if (data.success) {
         setAnalytics(data.data);
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(data.error || 'Analytics API returned an error');
+        toast({
+          title: 'Error loading analytics',
+          description: data.error || 'Check database connection and API logs',
+          status: 'error',
+        });
       }
     } catch (error) {
+      setErrorMessage('Could not fetch analytics data');
       toast({
         title: 'Error loading analytics',
+        description: 'Could not connect to the analytics API',
         status: 'error',
       });
     } finally {
@@ -67,7 +81,7 @@ export default function AnalyticsPage() {
     }
   };
 
-  if (loading || !analytics) {
+  if (loading) {
     return (
       <Box minH="100vh" bg="gray.50">
         <Navbar userRole="admin" />
@@ -79,6 +93,39 @@ export default function AnalyticsPage() {
       </Box>
     );
   }
+
+  if (!analytics) {
+    return (
+      <Box minH="100vh" bg="gray.50">
+        <Navbar userRole="admin" userName="Koo Trust & Safety" />
+        <Container maxW="4xl" py={8}>
+          <Card borderLeft="4px solid #e53e3e" boxShadow="sm">
+            <CardBody p={6}>
+              <VStack align="start" spacing={3}>
+                <Heading size="md">Unable to Load Analytics</Heading>
+                <Text color="gray.700">
+                  {errorMessage || 'Analytics data could not be loaded.'}
+                </Text>
+                <Button colorScheme="purple" onClick={() => {
+                  setLoading(true);
+                  fetchAnalytics();
+                }}>
+                  Retry
+                </Button>
+              </VStack>
+            </CardBody>
+          </Card>
+        </Container>
+      </Box>
+    );
+  }
+
+  const approvalRate = analytics.totalReviews > 0
+    ? Math.round((analytics.approvedCount / analytics.totalReviews) * 100)
+    : 0;
+  const dailyCapacity = analytics.totalReviews > 0
+    ? Math.round(analytics.totalReviews / 30)
+    : 0;
 
   // Chart data
   const weeklyData = [
@@ -163,7 +210,7 @@ export default function AnalyticsPage() {
                 <VStack align="start" spacing={3}>
                   <Heading size="sm">✓ Approval Rate</Heading>
                   <Text fontSize="3xl" fontWeight="bold" color="green.600">
-                    {Math.round((analytics.approvedCount / analytics.totalReviews) * 100)}%
+                    {approvalRate}%
                   </Text>
                   <Text fontSize="xs" color="gray.600">
                     {analytics.approvedCount.toLocaleString()} items approved
@@ -191,7 +238,7 @@ export default function AnalyticsPage() {
                 <VStack align="start" spacing={3}>
                   <Heading size="sm">⚡ Processing Capacity</Heading>
                   <Text fontSize="3xl" fontWeight="bold" color="purple.600">
-                    ~{Math.round(analytics.totalReviews / 30)} /day
+                    ~{dailyCapacity} /day
                   </Text>
                   <Text fontSize="xs" color="gray.600">
                     Daily average
