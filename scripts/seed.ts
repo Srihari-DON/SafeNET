@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/firebase';
 import { faker } from '@faker-js/faker/locale/en_IN';
-
-const prisma = new PrismaClient();
 
 // Realistic Indian names for moderators
 const indianFirstNames = [

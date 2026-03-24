@@ -16,8 +16,10 @@
 # Misc
 .DS_Store
 *.pem
+.env
 .env.local
 .env.*.local
+temp-*.js
 
 # Debug
 npm-debug.log*
