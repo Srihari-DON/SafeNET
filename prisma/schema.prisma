@@ -1,0 +1,98 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Moderator {
+  id               String   @id @default(cuid())
+  name             String
+  email            String   @unique
+  phone            String
+  language         String   // e.g., 'hindi', 'english', 'tamil'
+  hoursAvailable   Int      // hours per week
+  hourlyRate       Int      // in INR
+  trainingStatus   String   @default("new") // new, in_training, verified, inactive
+  trainedModules   String[] @default([]) // array of completed module IDs
+  verifiedAt       DateTime?
+  joinedAt         DateTime @default(now())
+  totalReviews     Int      @default(0)
+  accuracyScore    Float    @default(0) // 0-100
+  currentStreak    Int      @default(0) // days
+  
+  // Relations
+  moderations      ContentItem[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("moderators")
+}
+
+model ContentItem {
+  id              String   @id @default(cuid())
+  platformId      String
+  text            String   @db.Text
+  authorId        String
+  createdAt       DateTime @default(now())
+  flaggedAt       DateTime?
+  
+  moderatorId     String?
+  moderator       Moderator? @relation(fields: [moderatorId], references: [id], onDelete: SetNull)
+  
+  decision        String? // approved, flagged, escalated, pending
+  severity        String? // low, medium, high, critical
+  category        String? // harassment, grooming, hate_speech, spam
+  reason          String? @db.Text
+  contextUrl      String?
+  
+  updatedAt       DateTime @updatedAt
+
+  @@map("contents")
+}
+
+model Platform {
+  id                    String   @id @default(cuid())
+  name                  String
+  subscriptionTier      String   // starter, growth, enterprise
+  monthlySpend          Int      // in INR
+  activeModeratorCount  Int      @default(0)
+  monthlyReviewVolume   Int      @default(0)
+  createdAt             DateTime @default(now())
+  contactEmail          String
+  updatedAt             DateTime @updatedAt
+
+  @@map("platforms")
+}
+
+model Alert {
+  id              String   @id @default(cuid())
+  pattern         String
+  detectionCount  Int
+  region          String   // north_india, south_india, nationwide, etc.
+  severity        String   // low, medium, high, critical
+  firstDetectedAt DateTime @default(now())
+  description     String   @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("alerts")
+}
+
+model ModerationLog {
+  id              String   @id @default(cuid())
+  contentId       String
+  moderatorId     String
+  decision        String   // approved, flagged, escalated
+  category        String?
+  reason          String?  @db.Text
+  timeSpent       Int      // seconds
+  createdAt       DateTime @default(now())
+
+  @@map("moderation_logs")
+}
